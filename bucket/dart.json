@@ -1,26 +1,23 @@
 {
-	"homepage": "https://www.dartlang.org",
-	"license": "BSD",
-	"version": "1.0.0.3_r30188",
-	"_comment": "for versions, see https://storage.googleapis.com/dart-editor-archive-integration/latest/changelog.html",
-	"architecture": {
-		"64bit": {
-			"url": "http://storage.googleapis.com/dart-archive/channels/stable/release/30188/sdk/dartsdk-windows-x64-release.zip",
-			"hash": "fa36844e2351b301762a09ddc2da8b24fb82dc7504ce9dfac2f4827ea94fbe4c"
-		},
-		"32bit": {
-			"url": "http://storage.googleapis.com/dart-archive/channels/stable/release/30188/sdk/dartsdk-windows-ia32-release.zip",
-			"hash": "6c8ac51dff597d8bca5d96a5a53808f60682507ca01b870e5136392e50d6efa4"
-		}
-	},
-	"extract_dir": "dart-sdk",
-	"bin": [
-		"bin\\dart.exe",
-		"bin\\dart2js.bat",
-		"bin\\dartanalyzer.bat",
-		"bin\\dartdoc.bat"
-	],
-	"env_set": {
-		"DART_SDK": "$dir"
-	}
+    "version":  "1.11.1",
+    "license":  "BSD",
+    "homepage":  "https://www.dartlang.org/",
+    "extract_dir":  "dart-sdk",
+    "env_add_path":  [
+                         "bin"
+                     ],
+    "architecture":  {
+                         "64bit":  {
+                                       "url":  "https://storage.googleapis.com/dart-archive/channels/stable/release/1.11.1/sdk/dartsdk-windows-x64-release.zip",
+                                       "hash":  "8b0dbf2d90055a0de2e8a9bf01500f88a3575ba0457a3c44ce29fd759a553bfb"
+                                   },
+                         "32bit":  {
+                                       "url":  "https://storage.googleapis.com/dart-archive/channels/stable/release/1.11.1/sdk/dartsdk-windows-ia32-release.zip",
+                                       "hash":  "d2abdfe9c1e44d3c77d2b84e448c5ff14a6e3d45ed39460ed096782f9651bbc1"
+                                   }
+                     },
+    "checkver":  {
+                     "url":  "http://storage.googleapis.com/dart-archive/channels/stable/release/latest/VERSION",
+                     "re":  "\\s*\"version\"\\s*:\\s*(\\d+\\.\\d+\\.\\d+.*)"
+                 }
 }

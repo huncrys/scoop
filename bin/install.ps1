@@ -29,11 +29,10 @@ cp "$dir\_scoop_extract\scoop-master\*" $dir -r -force
 rm "$dir\_scoop_extract" -r -force
 rm $zipfile
 
-$null > "$dir\last_updated" # save install timestamp
-
 echo 'creating shim...'
 shim "$dir\bin\scoop.ps1" $false
 
+ensure_robocopy_in_path
 ensure_scoop_in_path
 success 'scoop was installed successfully!'
 echo "type 'scoop help' for instructions"

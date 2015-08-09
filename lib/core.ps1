@@ -2,22 +2,6 @@ $scoopdir = $env:SCOOP, "~\appdata\local\scoop" | select -first 1
 $globaldir = $env:SCOOP_GLOBAL, "$($env:programdata.tolower())\scoop" | select -first 1
 $cachedir = "$scoopdir\cache" # always local
 
-# using functions as aliases for powershell commands
-function script:cp() { copy-item @args } 
-function script:echo() { write-output @args } 
-function script:gc() { get-content @args } 
-function script:gci() { get-childitem @args } 
-function script:gcm() { get-command @args } 
-function script:iex() { invoke-expression @args } 
-function script:ls() { get-childitem @args } 
-function script:mkdir() { new-item -type directory @args } 
-function script:mv() { move-item @args } 
-function script:rm() { remove-item @args } 
-function script:rmdir() { remove-item @args } 
-function script:sc() { set-content @args } 
-function script:select() { select-object @args } 
-function script:sls() { select-string @args } 
-
 # helper functions
 function coalesce($a, $b) { if($a) { return $a } $b }
 function format($str, $hash) {
@@ -43,6 +27,7 @@ function appdir($app, $global) { "$(appsdir $global)\$app" }
 function versiondir($app, $version, $global) { "$(appdir $app $global)\$version" }
 
 # apps
+function sanitary_path($path) { return [regex]::replace($path, "[/\\?:*<>|]", "") }
 function installed($app, $global=$null) {
 	if($global -eq $null) { return (installed $app $true) -or (installed $app $false) }
 	return test-path (appdir $app $global)
@@ -126,11 +111,16 @@ function shim($path, $global, $name, $arg) {
 
 	$shim = "$abs_shimdir\$($name.tolower()).ps1"
 
+	# convert to relative path
+	pushd $abs_shimdir
+	$relative_path = resolve-path -relative $path
+	popd
+
 	# note: use > for first line to replace file, then >> to append following lines
 	echo '# ensure $HOME is set for MSYS programs' > $shim
 	echo "if(!`$env:home) { `$env:home = `"`$home\`" }" >> $shim
 	echo 'if($env:home -eq "\") { $env:home = $env:allusersprofile }' >> $shim
-	echo "`$path = '$path'" >> $shim
+	echo "`$path = join-path `"`$psscriptroot`" `"$relative_path`"" >> $shim
 	if($arg) {
 		echo "`$args = '$($arg -join "', '")', `$args" >> $shim
 	}
@@ -163,7 +153,7 @@ function ensure_in_path($dir, $global) {
 	$dir = fullpath $dir
 	if($path -notmatch [regex]::escape($dir)) {
 		echo "adding $(friendly_path $dir) to $(if($global){'global'}else{'your'}) path"
-		
+
 		env 'path' $global "$dir;$path" # for future sessions...
 		$env:path = "$dir;$env:path" # for this session
 	}
@@ -179,7 +169,7 @@ function remove_from_path($dir,$global) {
 
 	# future sessions
 	$was_in_path, $newpath = strip_path (env 'path' $global) $dir
-	if($was_in_path) { 
+	if($was_in_path) {
 		echo "removing $(friendly_path $dir) from your path"
 		env 'path' $global $newpath
 	}
@@ -193,6 +183,12 @@ function ensure_scoop_in_path($global) {
 	$abs_shimdir = ensure (shimdir $global)
 	# be aggressive (b-e-aggressive) and install scoop first in the path
 	ensure_in_path $abs_shimdir $global
+}
+
+function ensure_robocopy_in_path {
+	if(!(gcm robocopy -ea ignore)) {
+		shim "C:\Windows\System32\Robocopy.exe" $false
+	}
 }
 
 function wraptext($text, $width) {
@@ -214,4 +210,50 @@ function wraptext($text, $width) {
 
 function pluralize($count, $singular, $plural) {
 	if($count -eq 1) { $singular } else { $plural }
+}
+
+# for dealing with user aliases
+$default_aliases = @{
+	'cp' = 'copy-item'
+	'echo' = 'write-output'
+	'gc' = 'get-content'
+	'gci' = 'get-childitem'
+	'gcm' = 'get-command'
+	'iex' = 'invoke-expression'
+	'ls' = 'get-childitem'
+	'mkdir' = { new-item -type directory @args }
+	'mv' = 'move-item'
+	'rm' = 'remove-item'
+	'sc' = 'set-content'
+	'select' = 'select-object'
+	'sls' = 'select-string'
+}
+
+function reset_alias($name, $value) {
+	if($existing = get-alias $name -ea ignore |? { $_.options -match 'readonly' }) {
+		if($existing.definition -ne $value) {
+			write-host "alias $name is read-only; can't reset it" -f darkyellow
+		}
+		return # already set
+	}
+	if($value -is [scriptblock]) {
+		new-item -path function: -name "script:$name" -value $value | out-null
+		return
+	}
+
+	set-alias $name $value -scope script -option allscope
+}
+
+function reset_aliases() {
+	# for aliases where there's a local function, re-alias so the function takes precedence
+	$aliases = get-alias |? { $_.options -notmatch 'readonly' } |% { $_.name }
+	get-childitem function: | % {
+		$fn = $_.name
+		if($aliases -contains $fn) {
+			set-alias $fn local:$fn -scope script
+		}
+	}
+
+	# set default aliases
+	$default_aliases.keys | % { reset_alias $_ $default_aliases[$_] }
 }
